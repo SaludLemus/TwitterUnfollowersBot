@@ -15,12 +15,18 @@ TWITTER_LOGIN_URL = 'https://twitter.com/login'
 # How long to wait for the page to load (in seconds).
 LOAD_TIME = 4
 
-#------------------------
+#--------------------------------------------------------------------
 # Used for the login page.
 XPATH_USERNAME_INPUT = '//input[@name="session[username_or_email]"]'
 XPATH_PASSWORD_INPUT = '//input[@name="session[password]"]'
 XPATH_LOGIN_BUTTON = '//div[@role="button"]'
-#------------------------
+#--------------------------------------------------------------------
+
+
+#--------------------------------------------------------------------
+# Used to go to a user's Twitter profile page.
+XPATH_USER_PROFILE = '//a[@href="/%s"]' % username
+#--------------------------------------------------------------------
 
 
 class TwitterBot:
@@ -34,7 +40,12 @@ class TwitterBot:
         self.driver = webdriver.Chrome()
         self.driver.get(TWITTER_LOGIN_URL)
 
-    def SignIn(self):
+        # Wait for the login page to load fully.
+        time.sleep(LOAD_TIME)
+
+        self._SignIn()
+
+    def _SignIn(self):
         """Signs into the user's account via the page loaded by `__init__()`."""
 
         # Input the user's username/email.
@@ -49,17 +60,31 @@ class TwitterBot:
         # account.
         self.driver.find_element_by_xpath(XPATH_LOGIN_BUTTON).click()
 
+        # Once signed in, the user is taken to their home feed, so depending on
+        # the user's feed, it can take a while to fully load.
+        time.sleep(LOAD_TIME * 2)
+
+    def GoToUserTwitterProfile(self):
+        """Navigates to the user's Twitter profile."""
+
+        self.driver.find_element_by_xpath(XPATH_USER_PROFILE).click()
+
+        # Similar to waiting for the home feed to load, it also applies to the
+        # user's profile page.
+        time.sleep(LOAD_TIME * 2)
+
 
 def main():
+    """Creates the Twitter bot."""
+
+    assert username, 'Did not specify a username, please add it.'
+    assert password, 'Did not specify a password, please add it.'
+
     twitterbot = TwitterBot(username, password)
 
-    # Let the page load fully, otherwise, an exception can occur.
     time.sleep(LOAD_TIME)
 
-    twitterbot.SignIn()
-
-    # Test.
-    time.sleep(LOAD_TIME)
+    twitterbot.GoToUserTwitterProfile()
 
 
 if __name__ == '__main__':
