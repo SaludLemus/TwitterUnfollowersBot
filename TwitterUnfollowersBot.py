@@ -4,8 +4,9 @@
 # Bot for displaying unfollowers for a Twitter account.
 
 import os
-import time
 import secrets
+import selenium
+import time
 
 from secrets import password
 from secrets import username
@@ -22,6 +23,11 @@ LOAD_TIME = 4
 XPATH_USERNAME_INPUT = '//input[@name="session[username_or_email]"]'
 XPATH_PASSWORD_INPUT = '//input[@name="session[password]"]'
 XPATH_LOGIN_BUTTON = '//div[@role="button"]'
+XPATH_INVALID_CREDENTIALS = ('//span[contains(text(),'
+        '"did not match our records")]')
+XPATH_UNUSUAL_ACTIVITY = '//span[contains(text(), "unusual login activity")]'
+XPATH_CAPTCHA_CHALLENGE = ('//span[contains(text(),'
+        '"confirm you’re not a robot")]')
 #--------------------------------------------------------------------
 
 
@@ -66,6 +72,34 @@ class TwitterBot:
         # the user's feed, it can take a while to fully load.
         time.sleep(LOAD_TIME * 2)
 
+        # Verify that the login was successful by finding specific text on a
+        # wrong sign in attempt.
+        try:
+            self.driver.find_element_by_xpath(XPATH_INVALID_CREDENTIALS)
+
+            self.driver.quit()
+            raise ValueError('Invalid username or password, please correct it.')
+        except selenium.common.exceptions.NoSuchElementException:
+            try:
+                self.driver.find_element_by_xpath(XPATH_UNUSUAL_ACTIVITY)
+
+                self.driver.quit()
+                raise ValueError('Invalid username or password, '
+                        'please correct it.')
+            except selenium.common.exceptions.NoSuchElementException:
+                try:
+                    # Twitter may make the user solve a reCAPTCHA challenge
+                    # which this program does not support.
+                    self.driver.find_element_by_xpath(XPATH_CAPTCHA_CHALLENGE)
+
+                    self.driver.quit()
+                    raise ValueError('Program does not support solving a '
+                            'reCAPTCHA challenge.')
+                except selenium.common.exceptions.NoSuchElementException:
+                    pass
+
+        # Successfully logged in.
+
     def GoToUserTwitterProfile(self):
         """Navigates to the user's Twitter profile."""
 
@@ -79,6 +113,8 @@ class TwitterBot:
 def main():
     """Creates the Twitter bot."""
 
+    global username
+    global password
     # The Twitter login page requires at least 1 character for `username` and
     # `password` in order for the `Log in` button to be clickable.
     if not username:
@@ -89,6 +125,8 @@ def main():
         raise ValueError('Did not specify a password, please got to %s '
                 'and add it.' % os.path.abspath(secrets.__file__))
 
+    username = 'a@gmail.com'
+    password = 'some'
     twitterbot = TwitterBot(username, password)
 
     time.sleep(LOAD_TIME)
