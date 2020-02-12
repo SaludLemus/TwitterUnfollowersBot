@@ -3,7 +3,9 @@
 
 # Bot for displaying unfollowers for a Twitter account.
 
+import os
 import time
+import secrets
 
 from secrets import password
 from secrets import username
@@ -77,8 +79,15 @@ class TwitterBot:
 def main():
     """Creates the Twitter bot."""
 
-    assert username, 'Did not specify a username, please add it.'
-    assert password, 'Did not specify a password, please add it.'
+    # The Twitter login page requires at least 1 character for `username` and
+    # `password` in order for the `Log in` button to be clickable.
+    if not username:
+        raise ValueError('Did not specify a username, please go to %s '
+                'and add it.' % os.path.abspath(secrets.__file__))
+    
+    if not password:
+        raise ValueError('Did not specify a password, please got to %s '
+                'and add it.' % os.path.abspath(secrets.__file__))
 
     twitterbot = TwitterBot(username, password)
 
