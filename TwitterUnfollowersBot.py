@@ -30,10 +30,31 @@ XPATH_CAPTCHA_CHALLENGE = ('//span[contains(text(),'
         '"confirm you’re not a robot")]')
 #--------------------------------------------------------------------
 
-
 #--------------------------------------------------------------------
 # Used to go to a user's Twitter profile page.
 XPATH_USER_PROFILE = '//a[@href="/%s"]' % username
+#--------------------------------------------------------------------
+
+#--------------------------------------------------------------------
+# Used to navigate to the user's followers and following.
+XPATH_USER_FOLLOWERS = '//a[@href="/%s/followers"]' % username
+XPATH_USER_FOLLOWING = '//a[@href="/%s/following"]' % username
+#--------------------------------------------------------------------
+
+#--------------------------------------------------------------------
+# Used to obtain the list of following.
+XPATH_FOLLOWING_TIMELINE = '//div[@aria-label="Timeline: Following"]'
+#--------------------------------------------------------------------
+
+#--------------------------------------------------------------------
+# Used to obtain the list of followers.
+XPATH_FOLLOWERS_TIMELINE = '//div[@aria-label="Timeline: Followers"]'
+#--------------------------------------------------------------------
+
+
+#--------------------------------------------------------------------
+# Used to obtain either following or followers user cells.
+XPATH_USER_CELLS = './/div[@data-testid="UserCell"]'
 #--------------------------------------------------------------------
 
 
@@ -109,12 +130,64 @@ class TwitterBot:
         # user's profile page.
         time.sleep(LOAD_TIME * 2)
 
+    def _GoToUserFollowers(self):
+        """Navigates to the user's followers."""
+
+        self.driver.find_element_by_xpath(XPATH_USER_FOLLOWERS).click()
+
+        time.sleep(LOAD_TIME * 2)
+
+    def _GoToUserFollowing(self):
+        """Navigates to the user's following."""
+
+        self.driver.find_element_by_xpath(XPATH_USER_FOLLOWING).click()
+
+        time.sleep(LOAD_TIME * 2)
+
+    def _GetAtSet(self, users_timeline):
+        """Returns a set containing all unique @ following/followers.
+
+        Args:
+          users_timeline: The timeline that either contains all following or all
+          followers.
+        
+        """
+        
+        user_cells = users_timeline.find_elements_by_xpath(XPATH_USER_CELLS)
+
+        at_set = set()
+
+        for cell in user_cells:
+            at = cell.find_element_by_tag_name('a').get_attribute('href')
+
+            at_set.add('@%s' % at.split('/')[-1])
+
+        return at_set
+
+    def GetUserFollowers(self):
+        """Returns a list of the user's followers."""
+
+        self._GoToUserFollowers()
+
+        followers_timeline = self.driver.find_element_by_xpath(
+                XPATH_FOLLOWERS_TIMELINE)
+
+        return self._GetAtSet(followers_timeline)
+
+    def GetUserFollowing(self):
+        """Returns a list of the user's following."""
+
+        self._GoToUserFollowing()
+
+        following_timeline = self.driver.find_element_by_xpath(
+                XPATH_FOLLOWING_TIMELINE)
+
+        return self._GetAtSet(following_timeline)
+
 
 def main():
     """Creates the Twitter bot."""
 
-    global username
-    global password
     # The Twitter login page requires at least 1 character for `username` and
     # `password` in order for the `Log in` button to be clickable.
     if not username:
@@ -125,13 +198,30 @@ def main():
         raise ValueError('Did not specify a password, please got to %s '
                 'and add it.' % os.path.abspath(secrets.__file__))
 
-    username = 'a@gmail.com'
-    password = 'some'
     twitterbot = TwitterBot(username, password)
 
-    time.sleep(LOAD_TIME)
+    twitterbot.GoToUserTwitterProfile()
+
+    user_following_set = twitterbot.GetUserFollowing()
 
     twitterbot.GoToUserTwitterProfile()
+
+    user_followers_set = twitterbot.GetUserFollowers()
+
+    # Considered "not following" if that user is in the "following" set but not
+    # in the "followers" set.
+    unfollowers = []
+    for following in user_following_set:
+        if following not in user_followers_set:
+            unfollowers.append(following)
+
+    # Verify that the user does have unfollowers.
+    if unfollowers:
+        print('Here is the list of people (their @) that '
+                'are NOT following you:')
+
+        for unfollower in unfollowers:
+            print(unfollower)
 
 
 if __name__ == '__main__':
