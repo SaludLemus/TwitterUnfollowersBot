@@ -144,6 +144,111 @@ class TwitterBot:
 
         time.sleep(LOAD_TIME * 2)
 
+    def _GetStartIndexToAddUsers(self, left, right, user_cells, at_set):
+        """Returns an integer to indicate the start of adding users.
+
+        Peform binary search on the resulted list in `user_cells` to find
+        the last instance of an added user cell.
+
+        When a user has a lot of followers/following, one needs to scroll to
+        retrieve all the users, but how Twitter implements it is that previous
+        users are "lost" so the resulted list in `user_cells` may contain ALL
+        previous users who were added, a mix of added/unadded users, or ALL
+        unadded users.
+
+        Args:
+          left: The left starting position for the binary search.
+          right: The right starting position for the binary search.
+          user_cells: A list where each element is a cell which is how Twitter
+          defines a user.
+          at_set: The set of all added users so far.
+
+        Returns:
+          The index of the first unadded user.
+        """
+        
+        start = None
+        left = 0
+        right = len(user_cells) - 1 
+        while left <= right:
+            mid = int((left + right) / 2)
+
+            # For debugging purposes.
+            #print('Midpoint: %d' % mid)
+
+            # `href` attribute returns link/URL of the user.
+            # Ex: https://twitter.com/SOME_USER
+            cur_user = user_cells[mid].find_element_by_tag_name(
+                    'a').get_attribute('href').split('/')[-1]
+
+            # For debugging purposes.
+            #print('Cur user in search space: %s' % cur_user)
+            #print('Cur @ set: ', at_set)
+
+            # Current user is in the added user set, so every user before it
+            # has been added (if previous users exist/this user is not the
+            # first in the list), so search the right side.
+            if cur_user in at_set:
+                # For debugging purposes.
+                #print('User in set, so searching right side or term.')
+
+                # Exhausted all search space, so the next index (`left + 1`)
+                # is the next user to be added.
+                if left == right:
+                    start = left + 1
+                    break
+
+                # Still have not exhausted all search space, so search the
+                # right side.
+                left = mid + 1
+            else:
+                # For debugging purposes.
+                #print('User not in set, so searching left side or term.')
+
+                # Current user has not been added to the set, so search the
+                # left side.
+                
+                # Exhausted all search space, so `left` is the index for the
+                # next user to be added.
+                if left == right:
+                    start = left
+                    break
+
+                # Not exhausted all search space, so search left side.
+                right = mid - 1
+
+        # `left` is the starting position.
+        if left > right:
+            start = left
+
+        return start
+
+    def _AddNewUsersToAtSet(self, start, user_cells, at_set):
+        """Adds new users seen in followers/following to set."""
+
+        # 0 is a placeholder.
+        user = 0
+        for i in range(start, len(user_cells)):
+            cur_user = user_cells[i]
+            
+            cur_user_at = cur_user.find_element_by_tag_name(
+                    'a').get_attribute('href').split('/')[-1]
+
+            # For debugging purposes.
+            #print(cur_user_at)
+
+            assert cur_user_at not in at_set, ('Attempting to add an '
+                    'existing user (e.g. %s) to set.' % cur_user_at)
+
+            at_set.add(cur_user_at)
+
+            # The current user will become the previous user.
+            user = cur_user
+
+        return user
+
+
+
     def _GetAtSet(self, users_timeline):
         """Returns a set containing all unique @ following/followers.
 
@@ -152,8 +257,7 @@ class TwitterBot:
           followers.
         
         """
-        #user_cells = users_timeline.find_elements_by_xpath(XPATH_USER_CELLS)
-
+        
         at_set = set()
 
         # Base case where the user has no followers/following.
@@ -168,67 +272,13 @@ class TwitterBot:
             # Get all possible user cells.
             user_cells = users_timeline.find_elements_by_xpath(XPATH_USER_CELLS)
 
-            # Perform binary search on the resulted list in `user_cells` to find
-            # the last instance of a added user cell -> store its index in
-            # `start`.
-            start = None
-
             # For debugging purposes.
             #print('Length of search space: %d' % len(user_cells))
 
             # Starting positions are 0 index and last index of the returned
             # list.
-            left = 0
-            right = len(user_cells) - 1 
-            while left <= right:
-                mid = int((left + right) / 2)
-
-                # For debugging purposes.
-                #print('Midpoint: %d' % mid)
-
-                # `href` attribute returns link/URL of the user.
-                # Ex: https://twitter.com/SOME_USER
-                cur_user = user_cells[mid].find_element_by_tag_name(
-                        'a').get_attribute('href').split('/')[-1]
-
-                # For debugging purposes.
-                #print('Cur user in search space: %s' % cur_user)
-                #print('Cur @ set: ', at_set)
-
-                # Current user is in the added user set, so every user before it
-                # has been added (if previous users exist/this user is not the
-                # first in the list), so search the right side.
-                if cur_user in at_set:
-                    # For debugging purposes.
-                    #print('User in set, so searching right side or term.')
-
-                    # Exhausted all search space, so the next index (`left + 1`)
-                    # is the next user to be added.
-                    if left == right:
-                        start = left + 1
-                        break
-
-                    # Still have not exhausted all search space, so search the
-                    # right side.
-                    left = mid + 1
-                else:
-                    # For debugging purposes.
-                    #print('User not in set, so searching left side or term.')
-
-                    # Current user has not been added to the set, so search the
-                    # left side.
-                    
-                    # Exhausted all search space, so `left` is the index for the
-                    # next user to be added.
-                    if left == right:
-                        start = left
-                        break
-
-                    # Not exhausted all search space, so search left side.
-                    right = mid - 1
-
-            if left > right:
-                start = left
+            start = self._GetStartIndexToAddUsers(0, len(user_cells) - 1,
+                    user_cells, at_set)
             
             # For debugging purposes.
             #print('Start: ', start)
@@ -239,25 +289,8 @@ class TwitterBot:
             # For debugging purposes.
             #print('start idx: %d' % start)
 
-            # 0 is a placeholder.
-            user = 0
-            # Now add all unadded users from `start` to `len(user_cells)`.
-            for i in range(start, len(user_cells)):
-                cur_user = user_cells[i]
-                
-                cur_user_at = cur_user.find_element_by_tag_name(
-                        'a').get_attribute('href').split('/')[-1]
-
-                # For debugging purposes.
-                #print(cur_user_at)
-
-                assert cur_user_at not in at_set, ('Attempting to add an '
-                        'existing user (e.g. %s) to set.' % cur_user_at)
-
-                at_set.add(cur_user_at)
-
-                user = cur_user
-
+            user = self._AddNewUsersToAtSet(start, user_cells, at_set)
+            
             # Found all users in followers/following.
             if not user:
                 break
@@ -329,7 +362,7 @@ class TwitterBot:
 
 
 def main():
-    """Creates the Twitter bot."""
+    """Creates the Twitter bot to exec Twitter bot things."""
 
     # The Twitter login page requires at least 1 character for `username` and
     # `password` in order for the `Log in` button to be clickable.
@@ -343,7 +376,7 @@ def main():
 
     twitterbot = TwitterBot(username, password)
 
-    unfollowers = twitterbot.GetUnfollowers()
+    twitterbot.GetUnfollowers()
 
 
 if __name__ == '__main__':
