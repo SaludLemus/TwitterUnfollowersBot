@@ -152,15 +152,122 @@ class TwitterBot:
           followers.
         
         """
-        
-        user_cells = users_timeline.find_elements_by_xpath(XPATH_USER_CELLS)
+        #user_cells = users_timeline.find_elements_by_xpath(XPATH_USER_CELLS)
 
         at_set = set()
 
-        for cell in user_cells:
-            at = cell.find_element_by_tag_name('a').get_attribute('href')
+        # Base case where the user has no followers/following.
+        try:
+            users_timeline.find_element_by_xpath(XPATH_USER_CELLS)
+        except selenium.common.exceptions.NoSuchElementException:
+            return at_set
 
-            at_set.add('@%s' % at.split('/')[-1])
+        # 1 is a placeholder.
+        user = 1
+        while user:
+            # Get all possible user cells.
+            user_cells = users_timeline.find_elements_by_xpath(XPATH_USER_CELLS)
+
+            # Perform binary search on the resulted list in `user_cells` to find
+            # the last instance of a added user cell -> store its index in
+            # `start`.
+            start = None
+
+            # For debugging purposes.
+            #print('Length of search space: %d' % len(user_cells))
+
+            # Starting positions are 0 index and last index of the returned
+            # list.
+            left = 0
+            right = len(user_cells) - 1 
+            while left <= right:
+                mid = int((left + right) / 2)
+
+                # For debugging purposes.
+                #print('Midpoint: %d' % mid)
+
+                # `href` attribute returns link/URL of the user.
+                # Ex: https://twitter.com/SOME_USER
+                cur_user = user_cells[mid].find_element_by_tag_name(
+                        'a').get_attribute('href').split('/')[-1]
+
+                # For debugging purposes.
+                #print('Cur user in search space: %s' % cur_user)
+                #print('Cur @ set: ', at_set)
+
+                # Current user is in the added user set, so every user before it
+                # has been added (if previous users exist/this user is not the
+                # first in the list), so search the right side.
+                if cur_user in at_set:
+                    # For debugging purposes.
+                    #print('User in set, so searching right side or term.')
+
+                    # Exhausted all search space, so the next index (`left + 1`)
+                    # is the next user to be added.
+                    if left == right:
+                        start = left + 1
+                        break
+
+                    # Still have not exhausted all search space, so search the
+                    # right side.
+                    left = mid + 1
+                else:
+                    # For debugging purposes.
+                    #print('User not in set, so searching left side or term.')
+
+                    # Current user has not been added to the set, so search the
+                    # left side.
+                    
+                    # Exhausted all search space, so `left` is the index for the
+                    # next user to be added.
+                    if left == right:
+                        start = left
+                        break
+
+                    # Not exhausted all search space, so search left side.
+                    right = mid - 1
+
+            if left > right:
+                start = left
+            
+            # For debugging purposes.
+            #print('Start: ', start)
+
+            assert type(start) == int, ('Did not initialize `start` index to '
+                    'add users.')
+
+            # For debugging purposes.
+            #print('start idx: %d' % start)
+
+            # 0 is a placeholder.
+            user = 0
+            # Now add all unadded users from `start` to `len(user_cells)`.
+            for i in range(start, len(user_cells)):
+                cur_user = user_cells[i]
+                
+                cur_user_at = cur_user.find_element_by_tag_name(
+                        'a').get_attribute('href').split('/')[-1]
+
+                # For debugging purposes.
+                #print(cur_user_at)
+
+                assert cur_user_at not in at_set, ('Attempting to add an '
+                        'existing user (e.g. %s) to set.' % cur_user_at)
+
+                at_set.add(cur_user_at)
+
+                user = cur_user
+
+            # Found all users in followers/following.
+            if not user:
+                break
+
+            # Scroll to the last user added.
+            self.driver.execute_script('arguments[0].scrollIntoView(true);',
+                    user)
+
+            # Wait for nearby users to fully load.
+            time.sleep(LOAD_TIME)
 
         return at_set
 
@@ -184,6 +291,42 @@ class TwitterBot:
 
         return self._GetAtSet(following_timeline)
 
+    def _PrintUnfollowers(self, unfollowers):
+        """Prints all the unfollowers to stdout."""
+
+        if not unfollowers:
+            print('All people that you follow, follow you back.')
+            return
+
+        print('Here is the list of people (their @) that are NOT following '
+                'you:')
+
+        for unfollower in unfollowers:
+            print(unfollower)
+
+    def GetUnfollowers(self):
+        """Returns a list of all unfollowers for the user."""
+
+        self.GoToUserTwitterProfile()
+
+        user_following_set = self.GetUserFollowing()
+
+        self.GoToUserTwitterProfile()
+
+        user_followers_set = self.GetUserFollowers()
+
+        # Considered "not following" if that user is in the "following" set but
+        # not in the "followers" set.
+        unfollowers = []
+        for following in user_following_set:
+            if following not in user_followers_set:
+                unfollowers.append(following)
+
+        # Let the user know of all its unfollowers.
+        self._PrintUnfollowers(unfollowers)
+
+        return unfollowers
+
 
 def main():
     """Creates the Twitter bot."""
@@ -200,28 +343,7 @@ def main():
 
     twitterbot = TwitterBot(username, password)
 
-    twitterbot.GoToUserTwitterProfile()
-
-    user_following_set = twitterbot.GetUserFollowing()
-
-    twitterbot.GoToUserTwitterProfile()
-
-    user_followers_set = twitterbot.GetUserFollowers()
-
-    # Considered "not following" if that user is in the "following" set but not
-    # in the "followers" set.
-    unfollowers = []
-    for following in user_following_set:
-        if following not in user_followers_set:
-            unfollowers.append(following)
-
-    # Verify that the user does have unfollowers.
-    if unfollowers:
-        print('Here is the list of people (their @) that '
-                'are NOT following you:')
-
-        for unfollower in unfollowers:
-            print(unfollower)
+    unfollowers = twitterbot.GetUnfollowers()
 
 
 if __name__ == '__main__':
