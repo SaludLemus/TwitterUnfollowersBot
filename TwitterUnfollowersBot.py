@@ -18,6 +18,10 @@ TWITTER_LOGIN_URL = 'https://twitter.com/login'
 # How long to wait for the page to load (in seconds).
 LOAD_TIME = 4
 
+# How long to wait for nearby users to load when traversing the list of all
+# followers or following.
+NEARBY_USERS_LOAD_TIME = 0.5
+
 #--------------------------------------------------------------------
 # Used for the login page.
 XPATH_USERNAME_INPUT = '//input[@name="session[username_or_email]"]'
@@ -51,10 +55,14 @@ XPATH_FOLLOWING_TIMELINE = '//div[@aria-label="Timeline: Following"]'
 XPATH_FOLLOWERS_TIMELINE = '//div[@aria-label="Timeline: Followers"]'
 #--------------------------------------------------------------------
 
-
 #--------------------------------------------------------------------
 # Used to obtain either following or followers user cells.
 XPATH_USER_CELLS = './/div[@data-testid="UserCell"]'
+#--------------------------------------------------------------------
+
+#--------------------------------------------------------------------
+# Used to determine whether a user is following back.
+XPATH_USER_FOLLOWS_BACK = './/div[@dir="ltr"]/following-sibling::div'
 #--------------------------------------------------------------------
 
 
@@ -130,15 +138,19 @@ class TwitterBot:
         # user's profile page.
         time.sleep(LOAD_TIME * 2)
 
-    def _GoToUserFollowers(self):
+    def GoToUserFollowers(self):
         """Navigates to the user's followers."""
+
+        self.GoToUserTwitterProfile()
 
         self.driver.find_element_by_xpath(XPATH_USER_FOLLOWERS).click()
 
         time.sleep(LOAD_TIME * 2)
 
-    def _GoToUserFollowing(self):
+    def GoToUserFollowing(self):
         """Navigates to the user's following."""
+
+        self.GoToUserTwitterProfile()
 
         self.driver.find_element_by_xpath(XPATH_USER_FOLLOWING).click()
 
@@ -216,24 +228,32 @@ class TwitterBot:
         # 0 is a placeholder.
         user = 0
         for i in range(start, len(user_cells)):
-            cur_user = user_cells[i]
+            cur_cell = user_cells[i]
 
-            cur_user_twitter_profile = cur_user.find_element_by_tag_name(
-                    'a').get_attribute('href')
+            cur_user = cur_cell.find_element_by_tag_name('a')
 
-            cur_user_at = '@%s' % cur_user_twitter_profile.split('/')[-1]
+            cur_user_at = '@%s' % cur_user.get_attribute('href').split('/')[-1]
 
             assert cur_user_at not in at_map, ('Attempting to add an '
                     'existing user (e.g. %s) to set.' % cur_user_at)
 
-            at_map[cur_user_at] = cur_user_twitter_profile
+            follows_back = False
+            try:
+                cur_cell.find_element_by_xpath(XPATH_USER_FOLLOWS_BACK)
+                
+                follows_back = True
+            except selenium.common.exceptions.NoSuchElementException:
+                pass
+            
+            at_map[cur_user_at] = {
+                    'TwitterProfileURL' : cur_user.get_attribute('href'),
+                    'FollowsBack' : follows_back
+            }
 
             # The current user will become the previous user.
             user = cur_user
 
         return user
-
-
 
     def _GetAtMap(self, users_timeline):
         """Returns a map containing all unique @ following/followers.
@@ -279,7 +299,10 @@ class TwitterBot:
                     user)
 
             # Wait for nearby users to fully load.
-            time.sleep(LOAD_TIME)
+            #
+            # This may be dependent on the user's connection, so the actual
+            # amount may vary.
+            time.sleep(NEARBY_USERS_LOAD_TIME)
 
         return at_map
 
@@ -294,9 +317,7 @@ class TwitterBot:
         NOTE: This function assumes that the user is 
         """
 
-        self.GoToUserTwitterProfile()
-
-        self._GoToUserFollowers()
+        self.GoToUserFollowers()
 
         # Finds the root/start of the user's followers.
         followers_timeline = self.driver.find_element_by_xpath(
@@ -313,9 +334,7 @@ class TwitterBot:
           Twitter profile URL Example: https://twitter.com/SOMEUSER
         """
 
-        self.GoToUserTwitterProfile()
-
-        self._GoToUserFollowing()
+        self.GoToUserFollowing()
 
         # Finds the root/start of the user's followers.
         following_timeline = self.driver.find_element_by_xpath(
@@ -333,8 +352,8 @@ class TwitterBot:
         print('Here is the list of people (their @ and the link to their '
                 'Twitter profile) that are NOT following you:')
 
-        for unfollower, unfollower_twitter_profile in unfollowers:
-            print('%s \t %s' % (unfollower, unfollower_twitter_profile))
+        for user_at, twitter_url in unfollowers.items():
+            print('%s \t %s' % (user_at, twitter_url))
 
     def GetUnfollowers(self):
         """Returns a list of all unfollowers for the user.
@@ -348,16 +367,12 @@ class TwitterBot:
 
         user_following_map = self.GetUserFollowing()
 
-        user_followers_map = self.GetUserFollowers()
+        unfollowers = {
+                user_at : values['TwitterProfileURL'] \
+                        for user_at, values in user_following_map.items() \
+                        if not values['FollowsBack']
+        }
 
-        # Considered "not following" if that user is in the "following" set but
-        # not in the "followers" set.
-        unfollowers = []
-        for following, following_twitter_profile in user_following_map.items():
-            if following not in user_followers_map:
-                unfollowers.append((following, following_twitter_profile))
-
-        # Let the user know of all its unfollowers.
         self._PrintUnfollowers(unfollowers)
 
         return unfollowers
