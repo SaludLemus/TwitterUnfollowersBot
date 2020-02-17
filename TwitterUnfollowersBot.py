@@ -144,7 +144,7 @@ class TwitterBot:
 
         time.sleep(LOAD_TIME * 2)
 
-    def _GetStartIndexToAddUsers(self, left, right, user_cells, at_set):
+    def _GetStartIndexToAddUsers(self, left, right, user_cells, at_map):
         """Returns an integer to indicate the start of adding users.
 
         Peform binary search on the resulted list in `user_cells` to find
@@ -161,7 +161,7 @@ class TwitterBot:
           right: The right starting position for the binary search.
           user_cells: A list where each element is a cell which is how Twitter
           defines a user.
-          at_set: The set of all added users so far.
+          at_map: The dictionary of all added users so far.
 
         Returns:
           The index of the first unadded user.
@@ -183,12 +183,12 @@ class TwitterBot:
 
             # For debugging purposes.
             #print('Cur user in search space: %s' % cur_user)
-            #print('Cur @ set: ', at_set)
+            #print('Cur @ set: ', at_map)
 
             # Current user is in the added user set, so every user before it
             # has been added (if previous users exist/this user is not the
             # first in the list), so search the right side.
-            if cur_user in at_set:
+            if cur_user in at_map:
                 # For debugging purposes.
                 #print('User in set, so searching right side or term.')
 
@@ -223,7 +223,7 @@ class TwitterBot:
 
         return start
 
-    def _AddNewUsersToAtSet(self, start, user_cells, at_set):
+    def _AddNewUsersToAtMap(self, start, user_cells, at_map):
         """Adds new users seen in followers/following to set."""
 
         # 0 is a placeholder.
@@ -239,10 +239,10 @@ class TwitterBot:
             # For debugging purposes.
             #print(cur_user_at)
 
-            assert cur_user_at not in at_set, ('Attempting to add an '
+            assert cur_user_at not in at_map, ('Attempting to add an '
                     'existing user (e.g. %s) to set.' % cur_user_at)
 
-            at_set[cur_user_at] = cur_user_twitter_profile
+            at_map[cur_user_at] = cur_user_twitter_profile
 
             # The current user will become the previous user.
             user = cur_user
@@ -251,7 +251,7 @@ class TwitterBot:
 
 
 
-    def _GetAtSet(self, users_timeline):
+    def _GetAtMap(self, users_timeline):
         """Returns a set containing all unique @ following/followers.
 
         Args:
@@ -259,14 +259,17 @@ class TwitterBot:
           followers.
         
         """
-        
-        at_set = {}
+
+        # A dicionary that contains either all followers or all following.
+        # The key is a user's '@' and the value is the users's Twitter profile
+        # URL.
+        at_map= {}
 
         # Base case where the user has no followers/following.
         try:
             users_timeline.find_element_by_xpath(XPATH_USER_CELLS)
         except selenium.common.exceptions.NoSuchElementException:
-            return at_set
+            return at_map
 
         # 1 is a placeholder.
         user = 1
@@ -280,7 +283,7 @@ class TwitterBot:
             # Starting positions are 0 index and last index of the returned
             # list.
             start = self._GetStartIndexToAddUsers(0, len(user_cells) - 1,
-                    user_cells, at_set)
+                    user_cells, at_map)
             
             # For debugging purposes.
             #print('Start: ', start)
@@ -291,7 +294,7 @@ class TwitterBot:
             # For debugging purposes.
             #print('start idx: %d' % start)
 
-            user = self._AddNewUsersToAtSet(start, user_cells, at_set)
+            user = self._AddNewUsersToAtMap(start, user_cells, at_map)
             
             # Found all users in followers/following.
             if not user:
@@ -304,7 +307,7 @@ class TwitterBot:
             # Wait for nearby users to fully load.
             time.sleep(LOAD_TIME)
 
-        return at_set
+        return at_map
 
     def GetUserFollowers(self):
         """Returns a list of the user's followers."""
@@ -314,7 +317,7 @@ class TwitterBot:
         followers_timeline = self.driver.find_element_by_xpath(
                 XPATH_FOLLOWERS_TIMELINE)
 
-        return self._GetAtSet(followers_timeline)
+        return self._GetAtMap(followers_timeline)
 
     def GetUserFollowing(self):
         """Returns a list of the user's following."""
@@ -324,7 +327,7 @@ class TwitterBot:
         following_timeline = self.driver.find_element_by_xpath(
                 XPATH_FOLLOWING_TIMELINE)
 
-        return self._GetAtSet(following_timeline)
+        return self._GetAtMap(following_timeline)
 
     def _PrintUnfollowers(self, unfollowers):
         """Prints all the unfollowers to stdout."""
