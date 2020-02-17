@@ -309,12 +309,16 @@ class TwitterBot:
     def GetUserFollowers(self):
         """Returns a dictionary of the user's followers.
         
-        NOTE: The dicionary's key is a follower's '@' and the value is that
-        follower's Twitter profile URL:
-          @ Example: @SOMEUSER
-          Twitter profile URL Example: https://twitter.com/SOMEUSER
-
-        NOTE: This function assumes that the user is 
+        NOTE: The dicionary's key is a follower's '@' and the value is another
+        dictionary which contains that follower's Twitter profile URL and
+        a boolean value of whether that follower follows back:
+          Key Example:
+              @SOME_USER
+          Value Example:
+              Twitter profile URL Example:
+                  https://twitter.com/SOME_USER
+              Follows back example:
+                  True
         """
 
         self.GoToUserFollowers()
@@ -328,10 +332,16 @@ class TwitterBot:
     def GetUserFollowing(self):
         """Returns a dictionary of the user's following.
         
-        NOTE: The dicionary's key is a follower's '@' and the value is that
-        follower's Twitter profile URL:
-          @ Example: @SOMEUSER
-          Twitter profile URL Example: https://twitter.com/SOMEUSER
+        NOTE: The dicionary's key is a following's '@' and the value is another
+        dictionary which contains that following's Twitter profile URL and
+        a boolean value of whether that following follows back:
+          Key Example:
+              @SOME_USER
+          Value Example:
+              Twitter profile URL Example:
+                  https://twitter.com/SOME_USER
+              Follows back example:
+                  True
         """
 
         self.GoToUserFollowing()
@@ -352,7 +362,7 @@ class TwitterBot:
         print('Here is the list of people (their @ and the link to their '
                 'Twitter profile) that are NOT following you:')
 
-        for user_at, twitter_url in unfollowers.items():
+        for user_at, twitter_url in unfollowers:
             print('%s \t %s' % (user_at, twitter_url))
 
     def GetUnfollowers(self):
@@ -367,11 +377,11 @@ class TwitterBot:
 
         user_following_map = self.GetUserFollowing()
 
-        unfollowers = {
-                user_at : values['TwitterProfileURL'] \
+        unfollowers = [ 
+                (user_at, values['TwitterProfileURL']) \
                         for user_at, values in user_following_map.items() \
                         if not values['FollowsBack']
-        }
+        ] 
 
         self._PrintUnfollowers(unfollowers)
 
