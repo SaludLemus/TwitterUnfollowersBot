@@ -178,7 +178,7 @@ class TwitterBot:
 
             # `href` attribute returns link/URL of the user.
             # Ex: https://twitter.com/SOME_USER
-            cur_user = user_cells[mid].find_element_by_tag_name(
+            cur_user = '@%s' % user_cells[mid].find_element_by_tag_name(
                     'a').get_attribute('href').split('/')[-1]
 
             # For debugging purposes.
@@ -230,9 +230,11 @@ class TwitterBot:
         user = 0
         for i in range(start, len(user_cells)):
             cur_user = user_cells[i]
-            
-            cur_user_at = cur_user.find_element_by_tag_name(
-                    'a').get_attribute('href').split('/')[-1]
+
+            cur_user_twitter_profile = cur_user.find_element_by_tag_name(
+                    'a').get_attribute('href')
+
+            cur_user_at = '@%s' % cur_user_twitter_profile.split('/')[-1]
 
             # For debugging purposes.
             #print(cur_user_at)
@@ -240,7 +242,7 @@ class TwitterBot:
             assert cur_user_at not in at_set, ('Attempting to add an '
                     'existing user (e.g. %s) to set.' % cur_user_at)
 
-            at_set.add(cur_user_at)
+            at_set[cur_user_at] = cur_user_twitter_profile
 
             # The current user will become the previous user.
             user = cur_user
@@ -258,7 +260,7 @@ class TwitterBot:
         
         """
         
-        at_set = set()
+        at_set = {}
 
         # Base case where the user has no followers/following.
         try:
@@ -331,29 +333,29 @@ class TwitterBot:
             print('All people that you follow, follow you back.')
             return
 
-        print('Here is the list of people (their @) that are NOT following '
-                'you:')
+        print('Here is the list of people (their @ and the link to their '
+                'Twitter profile) that are NOT following you:')
 
-        for unfollower in unfollowers:
-            print(unfollower)
+        for unfollower, unfollower_twitter_profile in unfollowers:
+            print('%s \t %s' % (unfollower, unfollower_twitter_profile))
 
     def GetUnfollowers(self):
         """Returns a list of all unfollowers for the user."""
 
         self.GoToUserTwitterProfile()
 
-        user_following_set = self.GetUserFollowing()
+        user_following_map = self.GetUserFollowing()
 
         self.GoToUserTwitterProfile()
 
-        user_followers_set = self.GetUserFollowers()
+        user_followers_map = self.GetUserFollowers()
 
         # Considered "not following" if that user is in the "following" set but
         # not in the "followers" set.
         unfollowers = []
-        for following in user_following_set:
-            if following not in user_followers_set:
-                unfollowers.append(following)
+        for following, following_twitter_profile in user_following_map.items():
+            if following not in user_followers_map:
+                unfollowers.append((following, following_twitter_profile))
 
         # Let the user know of all its unfollowers.
         self._PrintUnfollowers(unfollowers)
@@ -376,7 +378,12 @@ def main():
 
     twitterbot = TwitterBot(username, password)
 
+    start = time.time()
     twitterbot.GetUnfollowers()
+    end = time.time()
+
+    print('\nTotal time to get unfollowers and print them: %f seconds' %
+            (end - start))
 
 
 if __name__ == '__main__':
