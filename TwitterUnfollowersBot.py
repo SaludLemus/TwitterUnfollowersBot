@@ -63,6 +63,7 @@ XPATH_USER_CELLS = './/div[@data-testid="UserCell"]'
 #--------------------------------------------------------------------
 # Used to determine whether a user is following back.
 XPATH_USER_FOLLOWS_BACK = './/div[@dir="ltr"]/following-sibling::div'
+FOLLOWS_BACK_TXT = 'Follows you'
 #--------------------------------------------------------------------
 
 
@@ -239,9 +240,9 @@ class TwitterBot:
 
             follows_back = False
             try:
-                cur_cell.find_element_by_xpath(XPATH_USER_FOLLOWS_BACK)
-                
-                follows_back = True
+                if cur_cell.find_element_by_xpath(
+                        XPATH_USER_FOLLOWS_BACK).text == FOLLOWS_BACK_TXT:
+                    follows_back = True
             except selenium.common.exceptions.NoSuchElementException:
                 pass
             
