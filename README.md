@@ -24,13 +24,13 @@ into the `/usr/local/bin` directory:<br />
 <a href="https://imgbb.com/"><img src="https://i.ibb.co/xhwj9j7/chromedriver-file-new-location.png" alt="chromedriver-file-new-location" border="0"></a><br />
 
 #### `secrets.py` file
-1. The Python3 script imports the `username` variable and `password` variable from a `secrets.py` file, so this Python file should be defined in the same directory as the `TwitterUnfollowersBot.py` file:<br />
+1. The Python3 script imports the `username` variable and `password` variable from a `secrets.py` file, so this Python file should be defined/created/added in the same directory as the `TwitterUnfollowersBot.py` file like below:<br />
 <a href="https://ibb.co/5cVPFGP"><img src="https://i.ibb.co/PC8dQFd/secrets-file.png" alt="secrets-file" border="0"></a><br />
 2. Both `username` and `password` variables are strings, where `username` is your username to log onto Twitter and `password` is the password to your Twitter account, so using your favorite editor, fill in that information for the `secrets.py` file like below (inbetween each of the " "):<br />
 <a href="https://ibb.co/yNDZZvH"><img src="https://i.ibb.co/BfmQQW0/secrets-info.png" alt="secrets-info" border="0"></a><br />
 
 ## Execution of `TwitterUnfollowersBot.py` file
-Execute the file as: `./TwitterUnfollowersBot.py` using your terminal.
+Using your terminal, go to the directory/path where `TwitterUnfollowersBot.py` lives and execute the file as: `./TwitterUnfollowersBot.py`
 
 ## A few NOTES
 1. This script assumes that there is NO additional step to "sign in" after inputting your username and password such as Two Factor Authentication (2FA) on your account; otherwise, the script will fail.
