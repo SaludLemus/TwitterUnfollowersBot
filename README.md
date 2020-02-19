@@ -37,4 +37,6 @@ Execute the file as: `./TwitterUnfollowersBot.py` using your terminal.
 2. The script will fail if either the username or password is wrong.
 3. Do NOT interact with the automated web browser (e.g. clicking on links, etc.), so let the script do its thing; otherwise, an error will happen (i.e. some elements will not be found because a different page was loaded).
 4. The output of the script is sent to stdout (gets displayed on the terminal), where each row represents a Twitter user that is NOT following you (its their "@", along with their Twitter profile URL which is clickable and it takes you to their profile) like below:<br />
-<a href="https://ibb.co/PTY6MQs"><img src="https://i.ibb.co/6vZW8Bc/Twitter-unfollowers-example.png" alt="Twitter-unfollowers-example" border="0"></a>
+<a href="https://ibb.co/PTY6MQs"><img src="https://i.ibb.co/6vZW8Bc/Twitter-unfollowers-example.png" alt="Twitter-unfollowers-example" border="0"></a><br />
+<a href="https://ibb.co/j6pDdzV"><img src="https://i.ibb.co/gjnJGdv/Twitter-unfollowers-example-2.png" alt="Twitter-unfollowers-example-2" border="0"></a><br />
+5. The script takes a while (look at the execution time at the above picture) because the script needs to wait for a page to load (to ensure that the elements are loaded) and this is dependent on your internet connection, so if the script fails because a page took too long to load, you can modify the `LOAD_TIME` variable or modify each statement that is `time.sleep()` (both are found in the `TwitterUnfollowersBot.py` file) according to your needs.
