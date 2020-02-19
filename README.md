@@ -1,4 +1,4 @@
-# TwitterUnfollowersBot
+# Twitter Unfollowers Bot
 
 ## Requirements
 
