@@ -1,12 +1,12 @@
 # Twitter Unfollowers Bot
 
-The purpose of this script is to automate the process of determining all unfollowers on your Twitter account (all unfollowers that fall under "Following"). Yes, I know that Twitter has a "Follows you" text right next to a Twitter user's "@", so this script takes advantage of that feature.
+The purpose of this script is to automate the process of determining all unfollowers on your Twitter account (i.e. all unfollowers that fall under "Following"). Yes, I know that Twitter has a "Follows you" text right next to a Twitter user's "@", so this script takes advantage of that feature.
 
 ## Requirements
 
 #### Selenium Python Module
 Install the module via `pip3` as such: `pip3 install selenium`
-* __NOTE:__ Would recommend installing the module under a virtual environment to avoid module conflicts.
+* __NOTE:__ Would recommend installing the module in a virtual environment to avoid module conflicts.
 
 #### Chrome Webdriver 
 1. Determine the version of Google Chrome that you're using via `chrome://settings/help` (paste into the search bar):<br />
