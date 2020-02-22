@@ -6,11 +6,24 @@
 import os
 import secrets
 import selenium
+import sys
 import time
 
-from secrets import password
-from secrets import username
 from selenium import webdriver
+
+# Verify that there is a `secrets.py` file.
+try:
+  from secrets import password
+  from secrets import username
+except ImportError:
+  ERROR_MSG = ('Please add secrets.py Python file to directory %s and add a '
+          '"username" and/or "password" variable, where "username" is a string '
+          'that is your Twitter username (e.g. username ="SOMEUSERNAME") and '
+          '"password" is a string that is your Twitter password (e.g. password '
+          '= "SOMEPASSWORD")'%
+          os.path.dirname(os.path.abspath(__file__)))
+
+  sys.exit(ERROR_MSG)
 
 
 TWITTER_LOGIN_URL = 'https://twitter.com/login'
@@ -394,13 +407,15 @@ def main():
 
     # The Twitter login page requires at least 1 character for `username` and
     # `password` in order for the `Log in` button to be clickable.
-    if not username:
-        raise ValueError('Did not specify a username, please go to %s '
-                'and add it.' % os.path.abspath(secrets.__file__))
+    if not username or type(username) != str:
+        raise ValueError('Did not specify a username or is not a string, '
+                'please go to %s and add it.' %
+                os.path.abspath(secrets.__file__))
     
-    if not password:
-        raise ValueError('Did not specify a password, please got to %s '
-                'and add it.' % os.path.abspath(secrets.__file__))
+    if not password or type(password) != str:
+        raise ValueError('Did not specify a password or is not a string, '
+                'please got to %s and add it.' %
+                os.path.abspath(secrets.__file__))
 
     twitterbot = TwitterBot(username, password)
 
