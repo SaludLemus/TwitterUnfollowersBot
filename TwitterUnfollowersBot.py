@@ -79,6 +79,20 @@ XPATH_USER_FOLLOWS_BACK = './/div[@dir="ltr"]/following-sibling::div'
 FOLLOWS_BACK_TXT = 'Follows you'
 #--------------------------------------------------------------------
 
+#--------------------------------------------------------------------
+# Used to logout of the Twitter account.
+XPATH_MORE_OPTIONS_BUTTON = '//div[@data-testid="AppTabBar_More_Menu"]'
+XPATH_MORE_OPTIONS_MENU = '//div[@role="menu"]'
+
+# Wait time (in seconds) to wait for the more options to fully load after
+# clicking on the '...' button.
+MORE_OPTIONS_LOAD_TIME = 1
+XPATH_LOGOUT_BUTTON = './/a[@href="/logout"]'
+
+# There is an additional step to log out.
+XPATH_ADDITIONAL_LOGOUT_BUTTON = '//div[@data-testid="confirmationSheetCancel"]'
+#--------------------------------------------------------------------
+
 
 class TwitterBot:
     def __init__(self, username, password):
@@ -142,6 +156,34 @@ class TwitterBot:
                     pass
 
         # Successfully logged in.
+
+    def _ShowMoreTwitterOptions(self):
+        """Shows options such as "Topics", "Log out", "Settings & Privacy"."""
+
+        # Click on the "..." button which then displays another set of options
+        # to the Twitter user.
+        self.driver.find_element_by_xpath(XPATH_MORE_OPTIONS_BUTTON).click()
+        
+        time.sleep(MORE_OPTIONS_LOAD_TIME)
+
+    def LogOut(self):
+        """Log out of the Twitter's user account."""
+
+        self._ShowMoreTwitterOptions()
+
+        menu_element = self.driver.find_element_by_xpath(
+                XPATH_MORE_OPTIONS_MENU)
+
+        menu_element.find_element_by_xpath(XPATH_LOGOUT_BUTTON).click()
+
+        time.sleep(MORE_OPTIONS_LOAD_TIME)
+
+        # There might be a confirmation box to log out.
+        try:
+            self.driver.find_element_by_xpath(
+                    XPATH_ADDITIONAL_LOGOUT_BUTTON).click()
+        except selenium.common.exceptions.NoSuchElementException:
+            sys.exit('Failed to log out of the Twitter account')
 
     def GoToUserTwitterProfile(self):
         """Navigates to the user's Twitter profile."""
@@ -418,7 +460,7 @@ def main():
                 os.path.abspath(secrets.__file__))
 
     twitterbot = TwitterBot(username, password)
-
+    
     start = time.time()
     twitterbot.GetUnfollowers()
     end = time.time()
@@ -426,6 +468,7 @@ def main():
     print('\nTotal time to get unfollowers and print them: %f seconds' %
             (end - start))
 
+    twitterbot.LogOut()
 
 if __name__ == '__main__':
     main()
